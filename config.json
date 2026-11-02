@@ -1,5 +1,6 @@
 {
-  "mongoURI": "mongodb+srv://mr09041998_db_user:ecc003VbzzHSGqWUk@priyanshu.qjfnlck.mongodb.net/?retryWrites=true&w=majority",
+  "mongoURI": "mongodb+srv://mr09041998_db_user:ecc003VbzzHSGqWUk%40priyanshu.qjfnlck.mongodb.net/?retryWrites=true&w=majority
+",
   "ownerID": "100037743553265",
   "adminIDs": [
     "100037743553265",
