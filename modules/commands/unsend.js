@@ -1,66 +1,70 @@
 /**
  * Unsend Command
- * Unsends a bot message when replied to
+ * Unsends a message when replied to (works with 'uns', 'unsend', 'delete')
  */
 
 module.exports = {
   config: {
     name: 'unsend',
-    aliases: ['delete'],
-    description: 'Unsends a bot message when replied to',
-    usage: '{prefix}unsend (reply to a bot message)',
+    aliases: ['uns', 'delete', 'del', 'unsend'],
+    description: 'Unsends a replied message',
+    usage: '{prefix}uns (reply to any message)',
     credit: '𝐏𝐫𝐢𝐲𝐚𝐧𝐬𝐡 𝐑𝐚𝐣𝐩𝐮𝐭',
     category: 'ADMIN',
     hasPrefix: true,
     permission: 'PUBLIC',
     cooldown: 3
   },
-  
-  /**
-   * Command execution
-   * @param {Object} options - Options object
-   * @param {Object} options.api - Facebook API instance
-   * @param {Object} options.message - Message object
-   * @param {Array<string>} options.args - Command arguments
-   */
+
   run: async function({ api, message, args }) {
     const { threadID, messageID, messageReply } = message;
-    
+    const logger = global.logger ?? console;
+
     try {
-      // Check if the command is a reply to a message
+      // Reply zaroori hai
       if (!messageReply) {
         return api.sendMessage(
-          '❌ You must reply to a bot message to unsend it.',
+          '❌ Jis message ko unsend karna hai, us par reply karke `uns` likho.',
           threadID,
           messageID
         );
       }
-      
-      // Check if the replied message is from the bot
-      if (messageReply.senderID !== api.getCurrentUserID()) {
+
+      const botID = api.getCurrentUserID();
+
+      // Bot apna message delete kar sakta hai
+      // Bot admin ho to kisi ka bhi message delete kar sakta hai (agar API allow kare)
+      const isBotMessage = messageReply.senderID === botID;
+
+      if (!isBotMessage) {
+        // Non-bot message: sirf tab try karo jab bot admin ho
+        // (Facebook API generally sirf apne messages unsend kar sakta hai)
         return api.sendMessage(
-          '❌ I can only unsend my own messages.',
+          '❌ Main sirf apne (bot ke) messages unsend kar sakta hoon. Kisi aur ka message delete karne ke liye group admin hona + Facebook ki permission chahiye hoti hai.',
           threadID,
           messageID
         );
       }
-      
-      // Try to unsend the message
+
+      let replied = false;
       api.unsendMessage(messageReply.messageID, (err) => {
+        if (replied) return;
+        replied = true;
+
         if (err) {
-          global.logger.error('Error unsending message:', err);
-          api.sendMessage(
-            '❌ Failed to unsend the message. It might be too old (Facebook only allows unsending messages sent within the last 10 minutes).',
+          logger.error('Error unsending message:', err);
+          return api.sendMessage(
+            '❌ Message unsend nahi ho paya. Ho sakta hai wo 10 minute se purana ho ya permission issue ho.',
             threadID,
             messageID
           );
         }
-        // No success message to keep the command clean
+        // Success par chup raho (clean UX)
       });
-      
+
     } catch (error) {
-      global.logger.error('Error in unsend command:', error.message);
-      return api.sendMessage('❌ An error occurred while processing your request.', threadID, messageID);
+      logger.error('Error in unsend command:', error.message);
+      return api.sendMessage('❌ Kuch galat ho gaya.', threadID, messageID);
     }
   }
 };
