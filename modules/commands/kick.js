@@ -8,14 +8,14 @@ module.exports = {
     name: 'kick',
     aliases: ['remove', 'kickuser'],
     description: 'Removes a user from the current group chat',
-    usage: '{prefix}kick <@mention>',
+    usage: '{prefix}kick <@mention> या Reply',
     credit: '𝐏𝐫𝐢𝐲𝐚𝐧𝐬𝐡 𝐑𝐚𝐣𝐩𝐮𝐭',
     category: 'GROUP',
     hasPrefix: true,
     permission: 'ADMIN',
     cooldown: 5
   },
-  
+
   /**
    * Command execution
    * @param {Object} options - Options object
@@ -25,47 +25,58 @@ module.exports = {
    */
   run: async function({ api, message, args }) {
     const { threadID, messageID, senderID, mentions } = message;
-    
+
     // Check if user has admin permission
     const isAdmin = await global.permissions.checkPermission(senderID, 'ADMIN');
     if (!isAdmin) {
       return api.sendMessage('❌ You need ADMIN permission to use this command.', threadID, messageID);
     }
-    
+
     // Check if this is a group chat
     const threadInfo = await api.getThreadInfo(threadID);
     if (!threadInfo.isGroup) {
       return api.sendMessage('❌ This command can only be used in group chats.', threadID, messageID);
     }
-    
-    // Check if mentions are provided
-    if (Object.keys(mentions).length === 0) {
+
+    let userIDToKick;
+    let userName = "User";
+
+    // चेक करो कि मेंशन है या रिप्लाई है
+    if (Object.keys(mentions).length > 0) {
+      userIDToKick = Object.keys(mentions)[0];
+      userName = mentions[userIDToKick].replace('@', '');
+    } else if (message.messageReply) {
+      // अगर मेंशन नहीं है, तो रिप्लाई चेक करो
+      userIDToKick = message.messageReply.senderID;
+      userName = message.messageReply.senderName || "User";
+    } else {
       return api.sendMessage(
-        '❌ Please mention the user you want to kick.\n' +
+        '❌ कृपया यूजर को मेंशन करें या उनके मैसेज पर रिप्लाई करें।\n' +
         'Usage: {prefix}kick @username',
         threadID, messageID
       );
     }
-    
-    // Get the user ID to kick (first mentioned user)
-    const userIDToKick = Object.keys(mentions)[0];
-    const userName = mentions[userIDToKick].replace('@', '');
-    
-    // Check if trying to kick the bot
+
+    // Check if trying to kick the bot itself
     if (userIDToKick === api.getCurrentUserID()) {
       return api.sendMessage('❌ I cannot kick myself from the group.', threadID, messageID);
     }
-    
+
     // Check if trying to kick an admin
-    const isTargetAdmin = threadInfo.adminIDs && threadInfo.adminIDs.some(admin => admin.id === userIDToKick);
+    const isTargetAdmin = threadInfo.adminIDs && threadInfo.adminIDs.some(admin => {
+      const adminID = typeof admin === 'string' ? admin : admin.id;
+      return adminID === userIDToKick;
+    });
+    
     if (isTargetAdmin) {
       return api.sendMessage('❌ Cannot kick an admin from the group.', threadID, messageID);
     }
-    
+
     // Try to remove the user from the group
     try {
       api.sendMessage(`⏳ Removing ${userName} from the group...`, threadID, messageID);
-      
+
+      // Modern FCA (Promise based) removal
       api.removeUserFromGroup(userIDToKick, threadID, async (err) => {
         if (err) {
           global.logger.error('Error removing user from group:', err);
@@ -77,10 +88,10 @@ module.exports = {
             threadID, messageID
           );
         }
-        
+
         // Success message
         api.sendMessage(`✅ Successfully removed ${userName} from the group.`, threadID);
-        
+
         // Update thread in database using thread controller
         try {
           await global.controllers.thread.removeUserFromThread(threadID, userIDToKick);
