@@ -60,7 +60,8 @@
   },
   "unsendReaction": "🖤",
   "apiKeys": {
-    "priyanshuApi": ""
+    "priyanshuApi": "",
+    "youtubeApi": "AIzaSyCX9yFU2-EG-iJUgyTZTfCIFReDuYEBpjs"
   },
   "facebookToken": "",
   "spamBanSettings": {
