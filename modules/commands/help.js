@@ -1,8 +1,11 @@
 /**
- * Help Command - Full List Only
- * No pagination, no page numbers, no boxes, no descriptions.
- * Just plain list of command names.
+ * Help Command - Simple Full List
+ * No boxes, no categories, no pagination.
+ * Just every command name (with prefix), one per line.
  */
+
+const fmtName = (cmd, prefix) =>
+  cmd.config.hasPrefix === false ? cmd.config.name : `${prefix}${cmd.config.name}`;
 
 module.exports = {
   config: {
@@ -39,23 +42,20 @@ module.exports = {
       }
 
       const usage = command.config.usage?.replace('{prefix}', prefix) ||
-        (command.config.hasPrefix === false
-          ? command.config.name
-          : `${prefix}${command.config.name}`);
+        fmtName(command, prefix);
 
-      const lines = [
-        `📌 ${command.config.name}`,
-        `📝 ${command.config.description || 'No description'}`,
-        `🔄 ${usage}`,
-        `⏱️ ${command.config.cooldown || 5}s`,
-        `🔒 ${command.config.permission || 'PUBLIC'}`,
-        `📂 ${command.config.category || 'UNCATEGORIZED'}`
-      ];
+      let reply = `📌 ${command.config.name}
+📝 ${command.config.description || 'No description'}
+🔄 ${usage}
+⏱️ ${command.config.cooldown || 5}s
+🔒 ${command.config.permission || 'PUBLIC'}
+📂 ${command.config.category || 'UNCATEGORIZED'}`;
+
       if (command.config.aliases?.length) {
-        lines.push(`🔗 ${command.config.aliases.map(a => prefix + a).join(', ')}`);
+        reply += `\n🔗 ${command.config.aliases.map(a => prefix + a).join(', ')}`;
       }
 
-      return api.sendMessage(lines.join('\n'), threadID, messageID);
+      return api.sendMessage(reply, threadID, messageID);
     }
 
     // Build permitted list
@@ -67,11 +67,8 @@ module.exports = {
     }
     permitted.sort((a, b) => a.config.name.localeCompare(b.config.name));
 
-    const fmt = cmd => cmd.config.hasPrefix === false
-      ? cmd.config.name
-      : `${prefix}${cmd.config.name}`;
-
-    const text = permitted.map(fmt).join('\n');
+    // Pure list — one command per line, nothing else
+    const text = permitted.map(cmd => fmtName(cmd, prefix)).join('\n');
 
     return sendChunked(api, threadID, text, messageID);
   },
@@ -80,7 +77,7 @@ module.exports = {
 };
 
 /**
- * Send long text in chunks (Messenger ~2000 char limit)
+ * Split long text into Messenger-safe chunks
  */
 async function sendChunked(api, threadID, text, messageID) {
   const LIMIT = 1900;
